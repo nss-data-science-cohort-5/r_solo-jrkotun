@@ -1,0 +1,87 @@
+---
+title: "R Solo Project - Habeeb"
+output: html_notebook
+---
+
+```{r}
+# Read in tidyverse library
+library(tidyverse)
+```
+
+Question 1: Read in 'districts.csv' into a tibble named 'districts'. How many rows and columns does it contain?
+```{r}
+districts <- read_csv('../data/districts.csv')
+```
+Answer: The data set contains 146 rows and 27 columns.
+
+Question 2: Notice that the first row corresponds to the whole State of Tennessee. Remove this row and save the result back to 'districts'.
+```{r}
+districts <- districts %>% 
+  slice(-1)
+```
+
+Question 3: How many districts have a proficiency rate of at least 80% for both alg_1 and eng_1?
+```{r}
+districts %>%
+  filter(alg_1 >= 80 & eng_1 >= 80)
+```
+Answer: 13 districts have a proficiency rate of at least 80% for both Algebra 1 and English 1.
+
+Question 4: How many districts have a proficiency rate less than 50% for either alg_1 or eng_1?
+```{r}
+districts %>%
+  filter(alg_1 < 50 | eng_1 < 50)
+```
+Answer: 8 districts have a proficiency rate less than 50% for either Algebra 1 or English 1.
+
+Question 5: Which district has the lowest graduation rate?
+```{r}
+districts %>%
+  select(system_name, grad) %>%
+  arrange(grad)
+```
+Answer: Tennessee School for the blind has the lowest graduation rate at 11.1%.
+
+Question 6: Which district has the highest dropout rate?
+```{r}
+districts %>%
+  select(system_name, dropout) %>%
+  arrange(desc(dropout))
+```
+Answer: Achievement School District has the highest dropout rate at 27.6%.
+
+Question 7: Within the Mid Cumberland region, which district has the highest ACT composite?
+```{r}
+districts %>%
+  filter(region == "Mid Cumberland") %>%
+  select(system_name, act_composite) %>%
+  arrange(desc(act_composite))
+```
+Answer: Williamson County has the highest ACT composite score within the Mid Cumberland region.
+
+Question 8: Create a histogram showing the distribution of graduation rates. What can you say about this distribution?
+```{r}
+ggplot(districts, aes(x = grad)) +
+  geom_histogram(bins = 25, fill = "blue", color = "black")
+```
+Answer: The data is skewed to the left and is uni modal around 85%. A majority of school districts see a graduation rate of 75% or greater.
+
+Question 9: Create a scatter plot to compare alg_1 proficiency rates to alg_2 rates. What do you notice? Facet this plot by region. Does anything stand out when you facet the plots?
+```{r}
+ggplot(districts, aes(x = alg_1, y = alg_2)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(districts, aes(x = alg_1, y = alg_2)) +
+  geom_point() +
+  facet_wrap(~region) +
+  geom_smooth(method = "lm")
+```
+Answer: The scatter plot comparing the proficiency rates between Algebra 1 and Algebra 2 shows a positive correlation between the two variables. Once faceting the data by region, we see a neutral correlation in the Upper Cumberland region.
+
+Question 10: Create a bar chart showing the total enrollment by region. Which region has the highest total enrollment? Which has the smallest?
+```{r}
+ggplot(districts, aes(x = region, y = enrollment)) +
+  geom_col()
+```
+

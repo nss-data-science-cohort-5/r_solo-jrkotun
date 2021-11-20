@@ -6,13 +6,17 @@ output: html_notebook
 ```{r}
 # Read in tidyverse library
 library(tidyverse)
+
+# Prevent scientific notation in graphs
+options(scipen = 100)
 ```
 
 Question 1: Read in 'districts.csv' into a tibble named 'districts'. How many rows and columns does it contain?
+
+Answer: The data set contains 146 rows and 27 columns.
 ```{r}
 districts <- read_csv('../data/districts.csv')
 ```
-Answer: The data set contains 146 rows and 27 columns.
 
 Question 2: Notice that the first row corresponds to the whole State of Tennessee. Remove this row and save the result back to 'districts'.
 ```{r}
@@ -21,52 +25,57 @@ districts <- districts %>%
 ```
 
 Question 3: How many districts have a proficiency rate of at least 80% for both alg_1 and eng_1?
+
+Answer: 13 districts have a proficiency rate of at least 80% for both Algebra 1 and English 1.
 ```{r}
 districts %>%
   filter(alg_1 >= 80 & eng_1 >= 80)
 ```
-Answer: 13 districts have a proficiency rate of at least 80% for both Algebra 1 and English 1.
 
 Question 4: How many districts have a proficiency rate less than 50% for either alg_1 or eng_1?
+
+Answer: 8 districts have a proficiency rate less than 50% for either Algebra 1 or English 1.
 ```{r}
 districts %>%
   filter(alg_1 < 50 | eng_1 < 50)
 ```
-Answer: 8 districts have a proficiency rate less than 50% for either Algebra 1 or English 1.
 
 Question 5: Which district has the lowest graduation rate?
+
+Answer: Tennessee School for the Blind has the lowest graduation rate at 11.1%.
 ```{r}
 districts %>%
-  select(system_name, grad) %>%
-  arrange(grad)
+  filter(grad == min(grad, na.rm=TRUE))
 ```
-Answer: Tennessee School for the blind has the lowest graduation rate at 11.1%.
 
 Question 6: Which district has the highest dropout rate?
+
+Answer: Achievement School District has the highest dropout rate at 27.6%.
 ```{r}
 districts %>%
-  select(system_name, dropout) %>%
-  arrange(desc(dropout))
+  filter(dropout == max(dropout, na.rm=TRUE))
 ```
-Answer: Achievement School District has the highest dropout rate at 27.6%.
 
 Question 7: Within the Mid Cumberland region, which district has the highest ACT composite?
+
+Answer: Williamson County has the highest ACT composite score within the Mid Cumberland region.
 ```{r}
 districts %>%
   filter(region == "Mid Cumberland") %>%
-  select(system_name, act_composite) %>%
-  arrange(desc(act_composite))
+  filter(act_composite == max(act_composite, na.rm=TRUE))
 ```
-Answer: Williamson County has the highest ACT composite score within the Mid Cumberland region.
 
 Question 8: Create a histogram showing the distribution of graduation rates. What can you say about this distribution?
+
+Answer: The data is skewed to the left and is uni modal around 85%. A majority of school districts see a graduation rate of 75% or greater.
 ```{r}
 ggplot(districts, aes(x = grad)) +
   geom_histogram(bins = 25, fill = "blue", color = "black")
 ```
-Answer: The data is skewed to the left and is uni modal around 85%. A majority of school districts see a graduation rate of 75% or greater.
 
 Question 9: Create a scatter plot to compare alg_1 proficiency rates to alg_2 rates. What do you notice? Facet this plot by region. Does anything stand out when you facet the plots?
+
+Answer: The scatter plot comparing the proficiency rates between Algebra 1 and Algebra 2 shows a positive correlation between the two variables. Once faceting the data by region, we see a neutral correlation in the Upper Cumberland region.
 ```{r}
 ggplot(districts, aes(x = alg_1, y = alg_2)) +
   geom_point() +
@@ -77,11 +86,99 @@ ggplot(districts, aes(x = alg_1, y = alg_2)) +
   facet_wrap(~region) +
   geom_smooth(method = "lm")
 ```
-Answer: The scatter plot comparing the proficiency rates between Algebra 1 and Algebra 2 shows a positive correlation between the two variables. Once faceting the data by region, we see a neutral correlation in the Upper Cumberland region.
 
 Question 10: Create a bar chart showing the total enrollment by region. Which region has the highest total enrollment? Which has the smallest?
+
+Answer: Mid Cumberland is the region with the highest total enrollment, while the Northwest region had the lowest total enrollment.
 ```{r}
 ggplot(districts, aes(x = region, y = enrollment)) +
   geom_col()
 ```
+
+
+Question 11: When creating this bar chart you may have noticed that some districts have missing enrollment values. For how many districts is this the case?
+
+Answer: East TN, Mid Cumberland, Southwest/Memphis, Upper Cumberland are the regions with missing enrollment values.
+```{r}
+districts %>%
+  group_by(region) %>%
+  summarize(enrollment_null = is.na(enrollment)) %>%
+  filter(enrollment_null == TRUE)
+```
+
+Question 12: What is the mean graduation rate across all districts? What might be wrong with using just the regular mean to assess average graduation rates?
+
+Answer: The mean graduation across all the districts is 90.07. The normal mean is thrown off by the very low graduation rate of the Tennessee School of the Blind.
+```{r}
+districts %>%
+  summarize(mean(grad, na.rm = TRUE))
+```
+
+Question 13: Redo the previous question but use a weighted average (`weighted.mean`) graduation across all districts, weighing by enrollment. How much does this change your answer? Can you explain using the data the reason for the big change from using the mean?
+
+Answer: The weighted mean is 87.33. It is 3 points lower than the non-weighted mean. Looking at the above scatter plot we can see that most of the points are gathered around the lower right hand side of the graph, meaning most districts had graduation rates above 75% with enrollment below 15000. The outliers with high enrollment rates but lower graduation rates more than likely caused the weighted mean to be lower than the non-weighted mean.
+```{r}
+districts %>%
+  filter(is.na(enrollment) == FALSE) %>%
+  summarize(weighted_mean = weighted.mean(grad, enrollment, na.rm = TRUE))
+```
+
+```{r}
+ggplot(districts, aes(x = grad, y = enrollment)) +
+  geom_point()
+```
+
+Question 14: Create a boxplot showing enrollment rates per region. Does anything stand out?
+
+Answer: 50% of the schools in most regions have around the same enrollment rate. The only exception to this is the Mid Cumberland region where 50% of schools have an enrollment rate between 3544 and 29197.
+```{r}
+ggplot(districts, aes(x = region, y = enrollment)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(size = 7))
+```
+```{r}
+districts %>%
+  filter(region == "Mid Cumberland") %>%
+  summarise(first_quartile = quantile(enrollment, 0.25, na.rm=TRUE), third__quartile = quantile(enrollment, 0.75, na.rm=TRUE))
+```
+
+Question 15: Create a boxplot showing graduation rates per region. Does anything stand out?
+
+Answer: The median and IQR of the graduation rates across the regions are all pretty high (above 75%). The Mid Cumberland region is interesting because it has a very low outlier caused by Tennessee School of the Blind.
+```{r}
+ggplot(districts, aes(x = region, y = grad)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(size = 7))
+```
+
+Question 16: Find the weighted average of graduation rates by region using enrollment as weights. Compare the results you get for the weighted average to what you see from the boxplots. Can you explain any discrepancy?
+
+Answer: 
+```{r}
+districts %>%
+  group_by(region) %>%
+  filter(is.na(enrollment) == FALSE) %>%
+  summarize(weighted_mean = weighted.mean(grad, enrollment, na.rm = TRUE))
+```
+
+Question 17: For many districts, values for `alg_2` are lower than for `alg_1`. Create a histogram showing the distribution of differences (`alg_1` - `alg_2`). Which school had the largest drop from `alg_1` to `alg_2`? For what percentage of schools is it true that `alg_2` is larger than `alg_1`? Is there a similar dropoff for `eng_2` and `eng_3`?
+
+Answer: Pickett County has the largest drop from Algebra 1 to Algebra 2, from 85.9 to 33.3. 
+```{r}
+sub_sec <- districts %>%
+  select(system_name, alg_1, alg_2, alg_diff, eng_2, eng_3) %>%
+  mutate(alg_diff = alg_1 - alg_2) %>% 
+  mutate(eng_diff = eng_2 - eng_3)
+  
+
+ggplot(sub_sec, aes(x = alg_diff)) +
+  geom_histogram()
+
+sub_sec %>%
+  filter(alg_diff == max(alg_diff, na.rm = TRUE))
+
+ggplot(sub_sec, aes(x = eng_diff)) +
+  geom_histogram()
+```
+
 

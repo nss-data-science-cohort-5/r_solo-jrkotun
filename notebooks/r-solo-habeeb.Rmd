@@ -163,22 +163,87 @@ districts %>%
 
 Question 17: For many districts, values for `alg_2` are lower than for `alg_1`. Create a histogram showing the distribution of differences (`alg_1` - `alg_2`). Which school had the largest drop from `alg_1` to `alg_2`? For what percentage of schools is it true that `alg_2` is larger than `alg_1`? Is there a similar dropoff for `eng_2` and `eng_3`?
 
-Answer: Pickett County has the largest drop from Algebra 1 to Algebra 2, from 85.9 to 33.3. 
+Answer: Pickett County has the largest drop from Algebra 1 to Algebra 2, from 85.9 to 33.3. Roughly 12% of districts (18 districts) have Algebra 2 scores that are higher than their Algebra 1 scores. 
+There is a worse trend seen in the difference between English 2 and English 3. There is only 1 district, Bradford SSD, that has a higher English 3 score then their English 2 score.
 ```{r}
 sub_sec <- districts %>%
-  select(system_name, alg_1, alg_2, alg_diff, eng_2, eng_3) %>%
-  mutate(alg_diff = alg_1 - alg_2) %>% 
-  mutate(eng_diff = eng_2 - eng_3)
+  select(system_name, alg_1, alg_2, eng_2, eng_3) %>%
+  mutate(alg_diff = alg_1 - alg_2, eng_diff = eng_2 - eng_3)
   
-
 ggplot(sub_sec, aes(x = alg_diff)) +
   geom_histogram()
 
 sub_sec %>%
   filter(alg_diff == max(alg_diff, na.rm = TRUE))
 
+sub_sec %>%
+  filter(alg_diff < 0) %>%
+  summarize(alg_2_greater_alg_1 = n() / nrow(districts) * 100)
+```
+```{r}
 ggplot(sub_sec, aes(x = eng_diff)) +
   geom_histogram()
+
+sub_sec %>%
+  filter(eng_diff == max(eng_diff, na.rm = TRUE))
+
+sub_sec %>%
+  filter(eng_diff < 0) %>%
+  summarize(eng_3_greater_eng_2 = n() / nrow(districts) *100)
 ```
 
+Question 18: You may have noticed that a lot of rows are missing values. Which district has the largest number of missing values? What do you notice about schools that have a lot of missing values?
+
+Answer: West Tennessee School for the Deaf has the most missing values. All regions have at least one district that has a NA value. The school districts with missing values all have their expulsion rate recorded and they have a very low to no expulsion rate. 
+```{r}
+districts %>%
+  rowwise() %>%
+  mutate(NA_per_row = sum(is.na(cur_data()))) %>%
+  filter(NA_per_row > 0) %>% View()
+```
+
+Question 19: Find the correlation between graduation rate and all other variables. Create a horizontal bar chart showing these correlations. Make sure that your plot is ordered by correlation values. What do you notice from these correlations?
+
+Answer: Unsurprisingly graduation rate has a strong, negative correlation with dropout and suspension rates. There is also positive correlations between graduation rate and proficiency and ACT test scores.
+```{r}
+grad_corr <- districts %>%
+  select(where(is.numeric) & !system) %>%
+  cor(use = "complete.obs")
+```
+
+```{r}
+corr_plot <- as.data.frame(grad_corr) %>%
+  ggplot(aes(x = reorder(rownames(grad_corr), grad), y = grad)) +
+  geom_col()
+
+corr_plot + 
+  coord_flip() +
+  labs(x = "Variables")
+```
+
+Question 20: Create a scatterplot for `grad` vs. `suspended`. Does what you see make sense given your answer from the previous part?
+
+Answer: The scatter plot does make sense, per the bar plot from the previous graph. As we see an increase in suspension rate, we see the graduation rate decrease.
+```{r}
+grad_suspeded_scatter <- ggplot(districts, aes(x = grad, y = suspended)) +
+  geom_point()
+grad_suspeded_scatter
+```
+
+Question 21: Create a linear regression model using `lm` with target variable `grad` and predictor variable `suspended`. What R^2 value does this model have? What is the interpretation of this number?
+
+Answer: The R^2 value for this linear regression model is 0.0795. This means that the suspension rate explains about 7.95% of the variability seen in the graduation rate.
+```{r}
+simple_regression_model <- lm(grad ~ suspended, data = districts)
+
+summary(simple_regression_model)
+```
+
+Question 22: Add the regression line to your scatterplot using `geom_smooth` with `method='lm'`. How do you feel about the regression line after seeing it plotted on the scatterplot?
+
+Answer: The regression line properly reflects the 7.95% of the variability we determined in the last problem.
+```{r}
+grad_suspeded_scatter + 
+  geom_smooth(method='lm')
+```
 

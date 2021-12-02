@@ -4,8 +4,9 @@ output: html_notebook
 ---
 
 ```{r}
-# Read in tidyverse library
+# Read in tidyverse and readxl libraries
 library(tidyverse)
+library(readxl)
 
 # Prevent scientific notation in graphs
 options(scipen = 100)
@@ -21,7 +22,7 @@ districts <- read_csv('../data/districts.csv')
 Question 2: Notice that the first row corresponds to the whole State of Tennessee. Remove this row and save the result back to 'districts'.
 ```{r}
 districts <- districts %>% 
-  slice(-1)
+  filter(system_name != "State of Tennessee")
 ```
 
 Question 3: How many districts have a proficiency rate of at least 80% for both alg_1 and eng_1?
@@ -29,7 +30,8 @@ Question 3: How many districts have a proficiency rate of at least 80% for both 
 Answer: 13 districts have a proficiency rate of at least 80% for both Algebra 1 and English 1.
 ```{r}
 districts %>%
-  filter(alg_1 >= 80 & eng_1 >= 80)
+  filter(alg_1 >= 80 & eng_1 >= 80) %>%
+  summarize(n_distinct(system_name))
 ```
 
 Question 4: How many districts have a proficiency rate less than 50% for either alg_1 or eng_1?
@@ -37,7 +39,8 @@ Question 4: How many districts have a proficiency rate less than 50% for either 
 Answer: 8 districts have a proficiency rate less than 50% for either Algebra 1 or English 1.
 ```{r}
 districts %>%
-  filter(alg_1 < 50 | eng_1 < 50)
+  filter(alg_1 < 50 | eng_1 < 50) %>%
+  summarize(n_distinct(system_name))
 ```
 
 Question 5: Which district has the lowest graduation rate?
@@ -45,7 +48,8 @@ Question 5: Which district has the lowest graduation rate?
 Answer: Tennessee School for the Blind has the lowest graduation rate at 11.1%.
 ```{r}
 districts %>%
-  filter(grad == min(grad, na.rm=TRUE))
+  filter(grad == min(grad, na.rm=TRUE)) %>%
+  select(system_name, grad)
 ```
 
 Question 6: Which district has the highest dropout rate?
@@ -53,7 +57,8 @@ Question 6: Which district has the highest dropout rate?
 Answer: Achievement School District has the highest dropout rate at 27.6%.
 ```{r}
 districts %>%
-  filter(dropout == max(dropout, na.rm=TRUE))
+  filter(dropout == max(dropout, na.rm=TRUE)) %>%
+  select(system_name, dropout)
 ```
 
 Question 7: Within the Mid Cumberland region, which district has the highest ACT composite?
@@ -62,7 +67,8 @@ Answer: Williamson County has the highest ACT composite score within the Mid Cum
 ```{r}
 districts %>%
   filter(region == "Mid Cumberland") %>%
-  filter(act_composite == max(act_composite, na.rm=TRUE))
+  filter(act_composite == max(act_composite, na.rm=TRUE)) %>%
+  select(system_name, act_composite)
 ```
 
 Question 8: Create a histogram showing the distribution of graduation rates. What can you say about this distribution?
@@ -70,7 +76,7 @@ Question 8: Create a histogram showing the distribution of graduation rates. Wha
 Answer: The data is skewed to the left and is uni modal around 85%. A majority of school districts see a graduation rate of 75% or greater.
 ```{r}
 ggplot(districts, aes(x = grad)) +
-  geom_histogram(bins = 25, fill = "blue", color = "black")
+  geom_histogram(bins = 50, fill = "blue", color = "black")
 ```
 
 Question 9: Create a scatter plot to compare alg_1 proficiency rates to alg_2 rates. What do you notice? Facet this plot by region. Does anything stand out when you facet the plots?
@@ -92,18 +98,18 @@ Question 10: Create a bar chart showing the total enrollment by region. Which re
 Answer: Mid Cumberland is the region with the highest total enrollment, while the Northwest region had the lowest total enrollment.
 ```{r}
 ggplot(districts, aes(x = region, y = enrollment)) +
-  geom_col()
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust = 0.5))
 ```
 
 
 Question 11: When creating this bar chart you may have noticed that some districts have missing enrollment values. For how many districts is this the case?
 
-Answer: East TN, Mid Cumberland, Southwest/Memphis, Upper Cumberland are the regions with missing enrollment values.
+Answer: There are 4 districts with missing enrollment values.
 ```{r}
-districts %>%
-  group_by(region) %>%
-  summarize(enrollment_null = is.na(enrollment)) %>%
-  filter(enrollment_null == TRUE)
+districts %>% 
+  filter(is.na(enrollment)) %>%
+  count()
 ```
 
 Question 12: What is the mean graduation rate across all districts? What might be wrong with using just the regular mean to assess average graduation rates?
@@ -134,7 +140,7 @@ Answer: 50% of the schools in most regions have around the same enrollment rate.
 ```{r}
 ggplot(districts, aes(x = region, y = enrollment)) +
   geom_boxplot() +
-  theme(axis.text.x = element_text(size = 7))
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust = 0.5))
 ```
 ```{r}
 districts %>%
@@ -148,7 +154,7 @@ Answer: The median and IQR of the graduation rates across the regions are all pr
 ```{r}
 ggplot(districts, aes(x = region, y = grad)) +
   geom_boxplot() +
-  theme(axis.text.x = element_text(size = 7))
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust = 0.5))
 ```
 
 Question 16: Find the weighted average of graduation rates by region using enrollment as weights. Compare the results you get for the weighted average to what you see from the boxplots. Can you explain any discrepancy?
@@ -245,5 +251,117 @@ Answer: The regression line properly reflects the 7.95% of the variability we de
 ```{r}
 grad_suspeded_scatter + 
   geom_smooth(method='lm')
+```
+
+Question 23: ead in the school-level testing data for 2014, available [here](https://www.tn.gov/content/dam/tn/education/data/data_2014_school_base.xlsx). You might find the readxl library useful for this task. If you use this library, be sure to look at the `na` argument for the `read_excel` function.
+```{r}
+tn_school_2014 <- read_excel("../data/data_2014_school_base.xlsx", na = c("*", "**"))
+```
+
+Question 24: How many schools have at least 20 percent of students below bsc for Algebra I? Which districts do these schools belong to?
+
+Answer: 71 schools have at least 20 percent of students below bsc for Algebra I. These schools belong to 30 districts listed in the table below.
+```{r}
+algebra_1_below_bsc <- tn_school_2014 %>%
+  filter(subject == "Algebra I", subgroup == "All Students", grade == "All Grades", pct_below_bsc >= 20)
+
+algebra_1_below_bsc %>%
+  summarize(n())
+
+algebra_1_below_bsc %>%
+  group_by(system_name) %>%
+  summarize(n())
+```
+
+Question 25: How many schools have at least 20 percent of students below bsc for _both_ Algebra I and English I?
+
+Answer: Jellico High School is the only school with at least 20 percent students below bsc for both Algebra I and English I.
+```{r}
+tn_school_2014 %>%
+  filter(subgroup == "All Students", grade == "All Grades", subject == c("Algebra I", "English I"), pct_below_bsc >= 20) %>%
+  select(system_name, school, school_name, subject, pct_below_bsc) %>%
+  group_by(school_name) %>%
+  filter(n() > 1)
+  
+```
+
+Question 26: Which grade has the highest pct_adv for Algebra I? Plot the average pct_adv per grade level as a bar chart. Make sure that the bars are ordered by grade level.
+
+Answer: Grade 8 has the highest pct_adv for Algebra I
+```{r}
+tn_school_2014 %>%
+  filter(subject == "Algebra I", grade != "All Grades", subgroup == "All Students") %>%
+  group_by(grade) %>%
+  summarize(algebra_1_pct_adv_mean = mean(pct_adv, na.rm = TRUE)) %>%
+  drop_na() %>%
+  mutate(grade = as.integer(grade)) %>%
+  arrange(grade) %>%
+  ggplot(aes(x = grade, y = algebra_1_pct_adv_mean)) +
+  geom_col() +
+  labs(y = "Average Pct_Adv Score for Algebra I")
+```
+
+Question 27: Find the correlation between pct_adv for Algebra I and pct_adv for Algebra II by school. Create a scatter plot showing Algebra II scores vs. Algebra I scores by school.
+
+Answer:
+```{r}
+tn_school_2014 %>%
+  filter(subject == c("Algebra I", "Algebra II"), grade == "All Grades", subgroup == "All Students") %>%
+  select(school_name, subject, pct_adv) %>%
+  group_by(school_name) %>%
+  pivot_wider(names_from = school_name, values_from = pct_adv)
+```
+
+Question 28: Find all schools in Rutherford County that have "High School" in their name. For these schools, create a chart (your choice) showing the differences in pct_below_bsc, pct_bsc, pct_prof, and pct_adv for Algebra I when looking across all subgroups and grades.
+
+Answer:
+```{r}
+tn_school_2014 %>%
+  filter(system_name == "Rutherford County", grepl("High School", school_name), grade == "All Grades", subgroup == "All Students", subject == "Algebra I") %>%
+  select(school_name, pct_below_bsc, pct_bsc, pct_prof, pct_adv) %>%
+  gather(key = pct, value = Value, pct_below_bsc:pct_adv) %>%
+  ggplot(aes(x = pct, y = Value, fill = school_name)) +
+  geom_col(position = "dodge") +
+  labs(x = "Proficiency Type")
+```
+
+Question 29: I claim that smaller schools do a better job preparing students for Algebra I standardized tests. Find the average number of valid tests (a proxy for the school size) for schools where the pct_prof_adv for Algebra I is greater than 95. Compare this to the average number of valid tests for all schools. In light of this result, how does my claim look?
+
+Answer: The claim seems to be valid. The average school size for schools that had a 95% or greater advanced proficiency rate in Algebra I was roughly 49 students. The average size for all schools that had students take an Algebra I test was roughly 130 students.
+```{r}
+tn_school_2014 %>%
+  filter(grade == "All Grades", subgroup == "All Students", subject == "Algebra I", pct_prof_adv > 95) %>%
+  summarize(avg_valid_tests_smaller_schools = mean(valid_tests))
+
+tn_school_2014 %>%
+  filter(grade == "All Grades", subgroup == "All Students", subject == "Algebra I") %>%
+  summarize(avg_valid_tests_all_schools = mean(valid_tests))
+```
+
+Question 30: I also claim that smaller schools do a worse job preparing students for Algebra I standardized tests. Find the average number of valid tests (a proxy for the school size) for schools where the pct_prof_adv for Algebra I is less than 25. Compare this to the average number of valid tests for all schools. In light of this result, how does my claim look now?
+
+Answer: This claim also seems to be valid. The average school size for schools that had a advanced proficiency rate of 25% or less in Algebra I was roughly 62 students. The average size for all schools that had students take an Algebra I test was roughly 130 students. 
+```{r}
+tn_school_2014 %>%
+  filter(grade == "All Grades", subgroup == "All Students", subject == "Algebra I", pct_prof_adv < 25) %>%
+  summarize(avg_valid_tests_smaller_schools = mean(valid_tests))
+
+tn_school_2014 %>%
+  filter(grade == "All Grades", subgroup == "All Students", subject == "Algebra I") %>%
+  summarize(avg_valid_tests_all_schools = mean(valid_tests))
+```
+
+Question 31: Create a scatter plot showing pct_prof_adv vs. valid_tests. Can you use this to explain the result for numbers 29 and 30?
+
+Answer: Based on the best fit line, the smaller the school, the better that school prepares their students for the Algebra I tests.
+```{r}
+tn_school_2014 %>%
+  filter(grade == "All Grades", subgroup == "All Students", subject == "Algebra I") %>%
+  ggplot(aes(x = pct_prof_adv, y = valid_tests)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Percent Proficient Advanced in Algebra I vs Valid Tests (School Size)",
+       x = "% Proficient Advanced",
+       y = "Valid Tests (School Size)")
 ```
 
